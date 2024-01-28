@@ -342,6 +342,15 @@ public:
         if (new_size > size()) {
             suf.resize(suf.size() + (new_size - size()));
         }
+        else if (new_size < size()) {
+            erase(cbegin() + new_size, cend());
+        }
+    }
+
+    void reserve(size_type new_size)
+    {
+        reserve_front(new_size);
+        reserve_back(new_size);
     }
 
     void reserve_front(size_type new_size)
@@ -468,6 +477,7 @@ __TEMPL_DECLARE bool operator>=(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
 __TEMPL_DECLARE std::ostream& operator<<(std::ostream& out, const __TEMPL_DQ& x)
 {
     size_t len = x.size();
+    if (len == 0) return out;
     for (size_t i = 0; i + 1 < len; i++) {
         out << x[i] << ' ';
     }

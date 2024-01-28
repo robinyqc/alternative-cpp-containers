@@ -8,5 +8,4 @@ signed main()
     a += b;
     std::cout << a << '\n';
     std::cout << a + b << '\n';
-    // std::vector<int>::operator[]()
 }
