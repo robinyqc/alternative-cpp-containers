@@ -40,11 +40,6 @@ public:
     {
     private:
 
-        template<typename _Ptr, typename _Tp>
-            using __ptr_rebind = typename std::pointer_traits<_Ptr>::template rebind<_Tp>;
-
-        template<typename _CvTp> using IterTempl = _Iterator<_CvTp&, __ptr_rebind<Ptr, _CvTp>>;
-
         using Iter = _Iterator<Ref, Ptr>;
 
     public:
@@ -53,13 +48,11 @@ public:
         typedef ptrdiff_t                                   difference_type;
         typedef Ref                                         reference;
         typedef Ptr                                         pointer;
-        typedef IterTempl<T>                                iterator;
-        typedef IterTempl<const T>                          const_iterator;
         typedef std::random_access_iterator_tag             iterator_category;
     
     private:
 
-        pointer get() const { return s->at_unsafe(cur); }
+        pointer get() const { return s->get_unsafe(cur); }
 
     public:
 
@@ -69,8 +62,9 @@ public:
         _Iterator(): cur(), s(nullptr) { }
         _Iterator(size_type _c, Self* _s): cur(_c), s(_s) { }
         template<typename _Iter,
-            typename = std::enable_if<std::is_same<Iter, const_iterator>::value 
-                                      &&std::is_same<_Iter, iterator>::value>>
+            typename = std::enable_if<
+                std::is_same<Iter, _Iterator<const T&, typename Self::const_pointer>>::value 
+                &&std::is_same<_Iter, _Iterator<T&, typename Self::pointer>>::value>>
         _Iterator(const _Iter& __x): cur(__x.cur), s(__x.s) { }
         _Iterator(const _Iterator& __x): cur(__x.cur), s(__x.s) { }
         _Iterator& operator=(const _Iterator& t) = default;
@@ -139,7 +133,6 @@ public:
     AmortizedDeque(InputIt first, InputIt last, const allocator_type& alloc = allocator_type())
         : pre(alloc), suf(first, last, alloc) { }
 
-    AmortizedDeque(const Self& other): pre(other.pre), suf(other.suf) { }
     AmortizedDeque(const Self& other, const allocator_type& alloc = allocator_type())
         : pre(other.pre, alloc), suf(other.suf, alloc) { }
     AmortizedDeque(Self&& other): AmortizedDeque() 
@@ -187,25 +180,39 @@ public:
         return suf.get_allocator();
     }
 
-    reference operator[](size_type pos)
-    {
-        return *at_unsafe(pos);
-    }
+    reference operator[](size_type pos) { return *get_unsafe(pos); }
+    const_reference operator[](size_type pos) const { return *get_const_unsafe(pos); }
 
-    size_type const size() { return pre.size() + suf.size(); }
-
-    reference at(size_type pos) const
+    reference at(size_type pos)
     {
         range_check(pos);
-        return *at_unsafe(pos);
+        return *get_unsafe(pos);
+    }
+    const_reference at(size_type pos) const
+    {
+        range_check(pos);
+        return *get_const_unsafe(pos);
     }
 
-    reference front() 
+    size_type size() const { return pre.size() + suf.size(); }
+
+    reference front()
     {
         if (pre.empty()) return suf.front();
         return pre.back();
     }
-    reference back() 
+    const_reference front() const
+    {
+        if (pre.empty()) return suf.front();
+        return pre.back();
+    }
+
+    reference back()
+    {
+        if (suf.empty()) return pre.front();
+        return suf.back();
+    }
+    const_reference back() const
     {
         if (suf.empty()) return pre.front();
         return suf.back();
@@ -243,7 +250,7 @@ public:
     {
         size_type dis = pos.cur;
         if (dis < pre.size()) {
-            pre.insert(pre.cbegin() + (pre.size() - dis + 1u), val); ///
+            pre.insert(pre.cbegin() + (pre.size() - dis), val); ///
         }
         else {
             suf.insert(suf.cbegin() + (dis - pre.size()), val);
@@ -255,7 +262,7 @@ public:
     {
         size_type dis = pos.cur;
         if (dis < pre.size()) {
-            pre.emplace(pre.cbegin() + (pre.size() - dis + 1u), args...); ///
+            pre.emplace(pre.cbegin() + (pre.size() - dis), args...); ///
         }
         else {
             suf.emplace(suf.cbegin() + (dis - pre.size()), args...);
@@ -267,7 +274,7 @@ public:
         size_type dis = pos.cur;
         iterator ret(pos.cur + 1, pos.s);
         if (dis < pre.size()) {
-            pre.erase(pre.cbegin() + (pre.size() - dis)); ///
+            pre.erase(pre.cbegin() + (pre.size() - dis - 1u)); ///
         }
         else suf.erase(suf.cbegin() + (dis - pre.size()));
         return ret;
@@ -288,6 +295,7 @@ public:
             pre.erase(pre.cbegin() + (pre.size() - to),
                       pre.cbegin() + (pre.size() - from));
         }
+        return last;
     }
 
     void push_back(const value_type& val) 
@@ -351,13 +359,18 @@ private:
     Vec pre;
     Vec suf;
 
-    pointer at_unsafe(size_type pos)
+    pointer get_unsafe(size_type pos)
     {
         if (pos < pre.size()) return (pre.begin() + pre.size() - pos - 1);
         return (suf.begin() + (pos - pre.size()));
     }
+    const_pointer get_const_unsafe(size_type pos) const
+    {
+        if (pos < pre.size()) return (pre.cbegin() + pre.size() - pos - 1);
+        return (suf.cbegin() + (pos - pre.size()));
+    }
 
-    void range_check(size_type pos)
+    void range_check(size_type pos) const
     {
         if (pos >= size())
         {
@@ -382,5 +395,105 @@ private:
     }
 
 };
+
+#define __TEMPL_DECLARE template<typename T, typename Alloc>
+#define __TEMPL_DQ AmortizedDeque<T, Alloc>
+
+__TEMPL_DECLARE void swap(__TEMPL_DQ& lhs, __TEMPL_DQ& rhs) 
+{
+    lhs.swap(rhs);
+}
+
+__TEMPL_DECLARE bool operator==(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    if (lhs.size() != rhs.size()) return false;
+    for (size_t i = 0, len = lhs.size(); i < len; i++) {
+        if (lhs[i] != rhs[i]) return false;
+    }
+    return true;
+}
+
+__TEMPL_DECLARE bool operator!=(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    return !(lhs == rhs);
+}
+
+__TEMPL_DECLARE bool operator<(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    size_t len = min(lhs.size(), rhs.size());
+    for (size_t i = 0; i < len; i++) {
+        if (lhs[i] != rhs[i]) {
+            return lhs[i] < rhs[i];
+        }
+    }
+    return lhs.size() < rhs.size();
+}
+
+__TEMPL_DECLARE bool operator>(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    size_t len = min(lhs.size(), rhs.size());
+    for (size_t i = 0; i < len; i++) {
+        if (lhs[i] != rhs[i]) {
+            return lhs[i] > rhs[i];
+        }
+    }
+    return lhs.size() > rhs.size();
+}
+
+__TEMPL_DECLARE bool operator<=(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    size_t len = min(lhs.size(), rhs.size());
+    for (size_t i = 0; i < len; i++) {
+        if (lhs[i] != rhs[i]) {
+            return lhs[i] < rhs[i];
+        }
+    }
+    return lhs.size() <= rhs.size();
+}
+
+__TEMPL_DECLARE bool operator>=(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
+{
+    size_t len = min(lhs.size(), rhs.size());
+    for (size_t i = 0; i < len; i++) {
+        if (lhs[i] != rhs[i]) {
+            return lhs[i] > rhs[i];
+        }
+    }
+    return lhs.size() >= rhs.size();
+}
+
+
+#ifdef USE_EXTRA_DQ_OPT
+
+__TEMPL_DECLARE std::ostream& operator<<(std::ostream& out, const __TEMPL_DQ& x)
+{
+    size_t len = x.size();
+    for (size_t i = 0; i + 1 < len; i++) {
+        out << x[i] << ' ';
+    }
+    out << x.back();
+    return out;
+}
+
+__TEMPL_DECLARE __TEMPL_DQ& operator+=(__TEMPL_DQ& x, const __TEMPL_DQ& y)
+{
+    size_t len_y = y.size();
+    for (size_t i = 0; i < len_y; i++) {
+        x.emplace_back(y[i]);
+    }
+    return x;
+}
+
+__TEMPL_DECLARE __TEMPL_DQ operator+(const __TEMPL_DQ& x, const __TEMPL_DQ& y)
+{
+    size_t len_y = y.size();
+    __TEMPL_DQ z(x);
+    for (size_t i = 0; i < len_y; i++) {
+        z.emplace_back(y[i]);
+    }
+    return z;
+}
+
+#endif
 
 #endif
