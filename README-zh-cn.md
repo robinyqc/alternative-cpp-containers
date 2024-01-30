@@ -41,7 +41,7 @@ Deque 维护一个序列，主要支持在**首部或尾部快速添加一个元
 将两个 vector 的首部相对摆放，看做一个序列使用。形象化地，$pre$ 的首部向后，
 $suf$ 的首部向前：
 
-![opposite_vectors](./pics/opposite_vectors.png)
+![opposite_vectors](./docs/pics/opposite_vectors.png)
 
 随机访问元素，分类讨论下标在那个 vector 内即可。
 
