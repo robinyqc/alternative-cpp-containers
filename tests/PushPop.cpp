@@ -18,6 +18,7 @@ signed main()
     dq.pop_front();
     for (auto it: dq) cout << it << ' ';
     cout << '\n';
+    dq.push_back(6);
     dq.pop_front();
     for (auto it: dq) cout << it << ' ';
     cout << '\n';

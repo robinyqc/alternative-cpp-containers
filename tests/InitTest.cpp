@@ -2,7 +2,7 @@
 #include <random>
 std::ostream& operator<<(std::ostream& out, std::mt19937 x)
 {
-    return out << x() << ' ';
+    return out << x() % 20 << ' ';
 }
 
 #define USE_EXTRA_DQ_OPT

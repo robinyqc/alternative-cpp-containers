@@ -17,21 +17,46 @@
 
 #include <vector>
 #include <cstddef>
-#include <cassert>
 #include <iostream>
+#include <utility>
+#include <algorithm>
 #include <type_traits>
 
 #ifndef _AMORTIZED_DEQUE
 #define _AMORTIZED_DEQUE
 
-template<typename T, typename Alloc = std::allocator<T>>
+#ifdef __cplusplus
+#define _CPPVERSION __cplusplus
+#else
+#define _CPPVERSION 201199L
+#endif
+
+#if _CPPVERSION >= 201100L
+
+/**
+ * @brief A simple deque implementation using dynamic-size memory allocation and
+ * amortized constant-time manipulation of elements at either end.
+ * 
+ * @tparam T Type of element.
+ * @tparam Alloc Alloctor type, defaults to std::allocator<T>.
+ */
+template<typename T, typename Alloc = std::allocator<T>
+#ifdef USE_EXTRA_DQ_OPT
+         ,typename Container = std::vector<T, Alloc>
+#endif
+>
 class AmortizedDeque
 {
 
 private:
 
-    using Self = AmortizedDeque<T>;
-    using Vec = std::vector<T, Alloc>;
+    typedef AmortizedDeque<T> Self;
+
+#ifdef USE_EXTRA_DQ_OPT
+    typedef Container Vec;
+#else
+    typedef std::vector<T, Alloc> Vec;
+#endif
 
 public:
 
@@ -40,7 +65,7 @@ public:
     {
     private:
 
-        using Iter = _Iterator<Ref, Ptr>;
+        typedef _Iterator<Ref, Ptr> Iter;
 
     public:
         typedef T                                           value_type;
@@ -56,11 +81,12 @@ public:
 
     public:
 
-        size_type cur;
+        difference_type cur;
         Self* s;
 
         _Iterator(): cur(), s(nullptr) { }
-        _Iterator(size_type _c, Self* _s): cur(_c), s(_s) { }
+        _Iterator(difference_type _c, Self* _s): cur(_c), s(_s) { }
+        _Iterator(difference_type _c, const Self* _s): cur(_c), s(const_cast<Self*>(_s)) { }
         template<typename _Iter,
             typename = std::enable_if<
                 std::is_same<Iter, _Iterator<const T&, typename Self::const_pointer>>::value 
@@ -93,11 +119,7 @@ public:
         }
         Iter operator-=(difference_type n) { cur -= n; return (*this); }
         Iter operator-(difference_type n) const { return Iter(cur - n, s); }
-        difference_type operator-(const Iter& t) const
-        {
-            return static_cast<difference_type>(cur)
-                  -static_cast<difference_type>(t.cur);
-        }
+        difference_type operator-(const Iter& t) const { return cur - t.cur; }
 
         bool operator==(const Iter& t) const { return s == t.s && cur == t.cur; }
         bool operator!=(const Iter& t) const { return s != t.s || cur != t.cur; }
@@ -180,18 +202,28 @@ public:
         return suf.get_allocator();
     }
 
-    reference operator[](size_type pos) { return *get_unsafe(pos); }
-    const_reference operator[](size_type pos) const { return *get_const_unsafe(pos); }
+    reference operator[](size_type pos) 
+    { 
+        return *get_unsafe(static_cast<difference_type>(pos) 
+                          - static_cast<difference_type>(pre.size())); 
+    }
+    const_reference operator[](size_type pos) const 
+    { 
+        return *get_const_unsafe(static_cast<difference_type>(pos) 
+                                - static_cast<difference_type>(pre.size())); 
+    }
 
     reference at(size_type pos)
     {
         range_check(pos);
-        return *get_unsafe(pos);
+        return *get_unsafe(static_cast<difference_type>(pos) 
+                          - static_cast<difference_type>(pre.size()));
     }
     const_reference at(size_type pos) const
     {
         range_check(pos);
-        return *get_const_unsafe(pos);
+        return *get_const_unsafe(static_cast<difference_type>(pos) 
+                                - static_cast<difference_type>(pre.size()));
     }
 
     size_type size() const { return pre.size() + suf.size(); }
@@ -218,14 +250,36 @@ public:
         return suf.back();
     }
 
-    iterator const begin() { return iterator(0u, this); }
-    const_iterator const cbegin() { return const_iterator(0u, this); }
-    iterator const end() { return iterator(size(), this); }
-    const_iterator const cend() { return const_iterator(size(), this); }
-    reverse_iterator const rbegin() { return reverse_iterator(size() - 1u, this); }
-    const_reverse_iterator const crbegin() { return const_reverse_iterator(size() - 1u, this); }
-    reverse_iterator const rend() { return reverse_iterator(1u, this); }
-    const_reverse_iterator const crend() { return const_reverse_iterator(1u, this); }
+    iterator begin() { return iterator(-static_cast<difference_type>(pre.size()), this); }
+    const_iterator begin() const { return iterator(-static_cast<difference_type>(pre.size()), this); }
+    const_iterator cbegin() const { return const_iterator(-static_cast<difference_type>(pre.size()), this); }
+    iterator end() { return iterator(suf.size(), this); }
+    const_iterator end() const { return iterator(suf.size(), this); }
+    const_iterator cend() const { return const_iterator(suf.size(), this); }
+    reverse_iterator rbegin()
+    { 
+        return reverse_iterator(static_cast<difference_type>(suf.size()) - 1, this); 
+    }
+    const_reverse_iterator rbegin() const
+    { 
+        return reverse_iterator(static_cast<difference_type>(suf.size()) - 1, this); 
+    }
+    const_reverse_iterator crbegin() const
+    { 
+        return const_reverse_iterator(static_cast<difference_type>(suf.size()) - 1, this); 
+    }
+    reverse_iterator rend() 
+    { 
+        return reverse_iterator(-static_cast<difference_type>(pre.size()) - 1, this); 
+    }
+    const_reverse_iterator rend() const
+    { 
+        return reverse_iterator(-static_cast<difference_type>(pre.size()) - 1, this); 
+    }
+    const_reverse_iterator crend() const 
+    { 
+        return const_reverse_iterator(-static_cast<difference_type>(pre.size()) - 1, this); 
+    }
 
     bool empty() const
     {
@@ -246,68 +300,190 @@ public:
         suf.clear();
     }
 
-    void insert(const_iterator pos, const value_type& val) 
+    iterator insert(const_iterator pos, const value_type& val) 
     {
-        size_type dis = pos.cur;
-        if (dis < pre.size()) {
-            pre.insert(pre.cbegin() + (pre.size() - dis), val); ///
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            pre.insert(pre.cbegin() - dis, val); ///
         }
         else {
-            suf.insert(suf.cbegin() + (dis - pre.size()), val);
+            suf.insert(suf.cbegin() + dis, val);
+        }
+        return pos;
+    }
+    iterator insert(const_iterator pos, value_type&& val) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            pre.insert(pre.cbegin() - dis, std::move(val)); ///
+        }
+        else {
+            suf.insert(suf.cbegin() + dis, std::move(val));
+        }
+        return pos;
+    }
+    
+    iterator insert(const_iterator pos, size_type count, const value_type& val) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            Vec temp(count, val);
+            std::reverse(temp.begin(), temp.end());
+            pre.insert(pre.cbegin() - dis, temp.begin(), temp.end()); 
+        }
+        else {
+            suf.insert(suf.cbegin() + dis, count, val);
+        }
+        return pos;
+    }
+    template<class InputIt>
+    iterator insert(const_iterator pos, InputIt first, InputIt last) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            Vec temp(first, last);
+            std::reverse(temp.begin(), temp.end());
+            pre.insert(pre.cbegin() - dis, temp.begin(), temp.end()); 
+        }
+        else {
+            suf.insert(suf.cbegin() + dis, first, last);
+        }
+        return pos;
+    }
+    iterator insert(const_iterator pos, std::initializer_list<value_type> ilist) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            std::reverse(ilist.begin(), ilist.end());
+            pre.insert(pre.cbegin() - dis, ilist); 
+        }
+        else {
+            suf.insert(suf.cbegin() + dis, ilist);
+        }
+        return pos;
+    }
+
+    template<class... Args>
+    iterator emplace(const_iterator pos, Args&&... args) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            pre.emplace(pre.cbegin() - dis, args...); ///
+        }
+        else {
+            suf.emplace(suf.cbegin() + dis, args...);
+        }
+        return pos;
+    }
+
+    iterator erase(const_iterator pos) 
+    {
+        difference_type dis = pos.cur;
+        if (dis < 0) {
+            pre.erase(pre.cbegin() - dis - 1); ///
+        }
+        else suf.erase(suf.cbegin() + dis);
+        return pos;
+    }
+
+    iterator erase(const_iterator first, const_iterator last)
+    {
+        difference_type from = first.cur, to = last.cur;
+        if (from < 0 && to >= 0) {
+            pre.erase(pre.cbegin(), pre.cbegin() - from);
+            suf.erase(suf.cbegin(), suf.cbegin() + to);
+        }
+        else if (from >= 0) {
+            suf.erase(suf.cbegin() + from, suf.cbegin() + to);
+        }
+        else { ///
+            pre.erase(pre.cbegin() - to, pre.cbegin() - from);
+        }
+        return last;
+    }
+
+#ifdef USE_EXTRA_DQ_OPT
+
+    void insert(size_type pos, const value_type& val) 
+    {
+        difference_type dis = static_cast<difference_type>(pos) 
+                            - static_cast<difference_type>(pre.size());
+        if (dis < 0) {
+            pre.insert(pre.cbegin() - dis, val); ///
+        }
+        else {
+            suf.insert(suf.cbegin() + dis, val);
         }
     }
 
     template<class... Args>
-    void emplace(const_iterator pos, Args&&... args) 
+    void emplace(size_type pos, Args&&... args) 
     {
-        size_type dis = pos.cur;
-        if (dis < pre.size()) {
-            pre.emplace(pre.cbegin() + (pre.size() - dis), args...); ///
+        difference_type dis = static_cast<difference_type>(pos) 
+                            - static_cast<difference_type>(pre.size());
+        if (dis < 0) {
+            pre.emplace(pre.cbegin() - dis, args...); ///
         }
         else {
-            suf.emplace(suf.cbegin() + (dis - pre.size()), args...);
+            suf.emplace(suf.cbegin() + dis, args...);
         }
     }
 
-    iterator earse(const_iterator pos) 
+    size_type erase(size_type pos) 
     {
-        size_type dis = pos.cur;
-        iterator ret(pos.cur + 1, pos.s);
-        if (dis < pre.size()) {
-            pre.erase(pre.cbegin() + (pre.size() - dis - 1u)); ///
+        difference_type dis = static_cast<difference_type>(pos) 
+                            - static_cast<difference_type>(pre.size());
+        if (dis < 0) {
+            pre.erase(pre.cbegin() - dis - 1); ///
         }
-        else suf.erase(suf.cbegin() + (dis - pre.size()));
-        return ret;
+        else suf.erase(suf.cbegin() + dis);
+        return pos;
     }
 
-    iterator earse(const_iterator first, const_iterator last)
+    size_type erase(size_type first, size_type last)
     {
-        size_type from = first.cur, to = last.cur;
-        if (from < pre.size() && to > pre.size()) {
-            pre.erase(pre.cbegin(), pre.cbegin() + (pre.size() - from));
-            suf.erase(suf.cbegin(), suf.cbegin() + (to - pre.size()));
+        difference_type from = static_cast<difference_type>(first) 
+                             - static_cast<difference_type>(pre.size());
+        difference_type to = static_cast<difference_type>(to) 
+                        - static_cast<difference_type>(pre.size());
+        if (from < 0 && to >= 0) {
+            pre.erase(pre.cbegin(), pre.cbegin() - from);
+            suf.erase(suf.cbegin(), suf.cbegin() + to);
         }
-        else if (from > pre.size()) {
-            suf.erase(suf.cbegin() + (from - pre.size()),
-                      suf.cbegin() + (to - pre.size()));
+        else if (from >= 0) {
+            suf.erase(suf.cbegin() + from, suf.cbegin() + to);
         }
         else { ///
-            pre.erase(pre.cbegin() + (pre.size() - to),
-                      pre.cbegin() + (pre.size() - from));
+            pre.erase(pre.cbegin() - to, pre.cbegin() - from);
         }
         return last;
     }
+#endif
 
     void push_back(const value_type& val) 
     {
         suf.push_back(val);
     }
+    void push_back(value_type&& val) 
+    {
+        suf.push_back(std::move(val));
+    }
+
+#if _CPPVERSION >= 201700L
+    template<class... Args>
+    reference emplace_back(Args&&... args) 
+    {
+        return suf.emplace_back(args...);
+    }
+#else
 
     template<class... Args>
     void emplace_back(Args&&... args) 
     {
         suf.emplace_back(args...);
     }
+
+#endif
 
     void pop_back() 
     {
@@ -319,12 +495,26 @@ public:
     {
         pre.push_back(val);
     }
+    void push_front(value_type&& val) 
+    {
+        pre.push_back(std::move(val));
+    }
+
+#if _CPPVERSION >= 201700L
+    template<class... Args>
+    reference emplace_front(Args&&... args) 
+    {
+        return pre.emplace_back(args...);
+    }
+#else
 
     template<class... Args>
     void emplace_front(Args&&... args) 
     {
         pre.emplace_back(args...);
     }
+
+#endif
 
     void pop_front() 
     {
@@ -346,6 +536,15 @@ public:
             erase(cbegin() + new_size, cend());
         }
     }
+    void resize(size_type new_size, const value_type& val)
+    {
+        if (new_size > size()) {
+            suf.resize(suf.size() + (new_size - size()), val);
+        }
+        else if (new_size < size()) {
+            erase(cbegin() + new_size, cend());
+        }
+    }
 
     void reserve(size_type new_size)
     {
@@ -353,6 +552,9 @@ public:
         reserve_back(new_size);
     }
 
+#ifndef USE_EXTRA_DQ_OPT
+private:
+#endif
     void reserve_front(size_type new_size)
     {
         if (new_size > pre.size()) pre.reserve(new_size);
@@ -368,24 +570,22 @@ private:
     Vec pre;
     Vec suf;
 
-    pointer get_unsafe(size_type pos)
+    pointer get_unsafe(difference_type pos)
     {
-        if (pos < pre.size()) return (pre.begin() + pre.size() - pos - 1);
-        return (suf.begin() + (pos - pre.size()));
+        if (pos < 0) return (pre.begin() - pos - 1);
+        return (suf.begin() + pos);
     }
-    const_pointer get_const_unsafe(size_type pos) const
+    const_pointer get_const_unsafe(difference_type pos) const
     {
-        if (pos < pre.size()) return (pre.cbegin() + pre.size() - pos - 1);
-        return (suf.cbegin() + (pos - pre.size()));
+        if (pos < 0) return (pre.cbegin() - pos - 1);
+        return (suf.cbegin() + pos);
     }
 
-    void range_check(size_type pos) const
+    void range_check(size_type pos) const ///
     {
         if (pos >= size())
         {
-            std::cerr << "AmortizedDeque::range_check: pos (which is " << pos 
-                    << ") >= this->size() (which is " << size() << ")\n";
-            assert(false);
+            // throw std::out_of_range;
         }
     }
 
@@ -396,7 +596,7 @@ private:
             pre = Vec(suf.rbegin() + mid, suf.rend());
             suf = Vec(suf.end() - mid, suf.end());
         }
-        else if (suf.empty()) {
+        else {
             size_type mid = pre.size() / 2;
             suf = Vec(pre.rbegin() + mid, pre.rend());
             pre = Vec(pre.end() - mid, pre.end());
@@ -503,6 +703,8 @@ __TEMPL_DECLARE __TEMPL_DQ operator+(const __TEMPL_DQ& x, const __TEMPL_DQ& y)
     }
     return z;
 }
+
+#endif
 
 #endif
 

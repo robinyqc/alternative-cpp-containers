@@ -1,0 +1,12 @@
+*
+
+!/**/
+
+!*.cpp
+!*.hpp
+!*.md
+!*.png
+
+!.gitignore
+!.gitattributes
+!LICENSE
