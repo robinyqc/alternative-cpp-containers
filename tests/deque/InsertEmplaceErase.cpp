@@ -1,10 +1,10 @@
-#define USE_EXTRA_DQ_OPT
-#include "../AmortizedDeque.hpp"
+#define USE_EXTRA_ACC_DEQUE_OPT
+#include "deque"
 
 signed main()
 {
     using std::cout;
-    AmortizedDeque<int> a({0, 1, 2, 3, 4, 5});
+    acc::deque<int> a({0, 1, 2, 3, 4, 5});
     a.insert(a.cbegin() + 3, 6);
     a.insert(a.begin() + 1, 7);
     a.emplace(a.begin() + 6, 8);

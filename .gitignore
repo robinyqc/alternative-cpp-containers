@@ -10,3 +10,7 @@
 !.gitignore
 !.gitattributes
 !LICENSE
+!deque
+!vector
+!bitset
+!queue

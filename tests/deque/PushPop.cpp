@@ -1,9 +1,9 @@
-#include "../AmortizedDeque.hpp"
+#include "deque"
 
 signed main()
 {
     using std::cout;
-    AmortizedDeque<int> dq;
+    acc::deque<int> dq;
     dq.emplace_back(1);
     dq.emplace_back(2);
     dq.push_back(3);

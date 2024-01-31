@@ -1,28 +1,22 @@
 #include <iostream>
-#include <random>
-std::ostream& operator<<(std::ostream& out, std::mt19937 x)
-{
-    return out << x() % 20 << ' ';
-}
-
-#define USE_EXTRA_DQ_OPT
-
-#include "../AmortizedDeque.hpp"
+#define USE_EXTRA_ACC_DEQUE_OPT
+#include "deque"
 #include <deque>
 
 
 signed main()
 {
-    using mt = std::mt19937;
     using std::cout;
-    using AMDQ = AmortizedDeque<mt>;
+    
+    // acc::AmotrizedDeque == acc::deque
+    using AMDQ = acc::AmortizedDeque<double>; 
 
     AMDQ empty;
 
     AMDQ count(10);
     cout << count << '\n';
 
-    AMDQ count_value(10, mt(13u));
+    AMDQ count_value(10, 1.45);
     cout << count_value << '\n';
 
     AMDQ from_iter(count_value.begin(), count_value.end());
@@ -36,7 +30,7 @@ signed main()
 
     cout << count_value << '\n'; // undefined, expected nothing output.
 
-    AMDQ from_ilist({mt(3), mt(9), mt(10), mt()});
+    AMDQ from_ilist({114, 514, 1919, 810});
     cout << from_ilist << '\n';
     return 0;
 }

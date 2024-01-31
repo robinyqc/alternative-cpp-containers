@@ -25,24 +25,26 @@
 #ifndef _AMORTIZED_DEQUE
 #define _AMORTIZED_DEQUE
 
+namespace acc
+{
+
 #ifdef __cplusplus
 #define _CPPVERSION __cplusplus
 #else
 #define _CPPVERSION 201199L
 #endif
 
+#ifndef USE_EXTRA_ACC_DEQUE_OPT
+#ifdef USE_EXTRA_ACC_OPT
+#define USE_EXTRA_ACC_DEQUE_OPT
+#endif
+#endif
+
 #if _CPPVERSION >= 201100L
 
-/**
- * @brief A simple deque implementation using dynamic-size memory allocation and
- * amortized constant-time manipulation of elements at either end.
- * 
- * @tparam T Type of element.
- * @tparam Alloc Alloctor type, defaults to std::allocator<T>.
- */
 template<typename T, typename Alloc = std::allocator<T>
-#ifdef USE_EXTRA_DQ_OPT
-         ,typename Container = std::vector<T, Alloc>
+#ifdef USE_EXTRA_ACC_DEQUE_OPT
+        ,typename Container = std::vector<T, Alloc>
 #endif
 >
 class AmortizedDeque
@@ -52,7 +54,7 @@ private:
 
     typedef AmortizedDeque<T> Self;
 
-#ifdef USE_EXTRA_DQ_OPT
+#ifdef USE_EXTRA_ACC_DEQUE_OPT
     typedef Container Vec;
 #else
     typedef std::vector<T, Alloc> Vec;
@@ -402,7 +404,7 @@ public:
         return last;
     }
 
-#ifdef USE_EXTRA_DQ_OPT
+#ifdef USE_EXTRA_ACC_DEQUE_OPT
 
     void insert(size_type pos, const value_type& val) 
     {
@@ -552,7 +554,7 @@ public:
         reserve_back(new_size);
     }
 
-#ifndef USE_EXTRA_DQ_OPT
+#ifndef USE_EXTRA_ACC_DEQUE_OPT
 private:
 #endif
     void reserve_front(size_type new_size)
@@ -605,8 +607,17 @@ private:
 
 };
 
+#ifdef USE_EXTRA_ACC_DEQUE_OPT
+
+#define __TEMPL_DECLARE template<typename T, typename Alloc, typename Container>
+#define __TEMPL_DQ AmortizedDeque<T, Alloc, Container>
+
+#else
+
 #define __TEMPL_DECLARE template<typename T, typename Alloc>
 #define __TEMPL_DQ AmortizedDeque<T, Alloc>
+
+#endif
 
 __TEMPL_DECLARE void swap(__TEMPL_DQ& lhs, __TEMPL_DQ& rhs) 
 {
@@ -672,7 +683,7 @@ __TEMPL_DECLARE bool operator>=(const __TEMPL_DQ& lhs, const __TEMPL_DQ& rhs)
 }
 
 
-#ifdef USE_EXTRA_DQ_OPT
+#ifdef USE_EXTRA_ACC_DEQUE_OPT
 
 __TEMPL_DECLARE std::ostream& operator<<(std::ostream& out, const __TEMPL_DQ& x)
 {
@@ -707,5 +718,7 @@ __TEMPL_DECLARE __TEMPL_DQ operator+(const __TEMPL_DQ& x, const __TEMPL_DQ& y)
 #endif
 
 #endif
+
+}
 
 #endif
