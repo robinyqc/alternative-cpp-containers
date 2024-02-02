@@ -717,6 +717,10 @@ __TEMPL_DECLARE __TEMPL_DQ operator+(const __TEMPL_DQ& x, const __TEMPL_DQ& y)
 
 #endif
 
+#else
+
+static_assert(false, "Requires C++11 or later for acc::deque.");
+
 #endif
 
 }
