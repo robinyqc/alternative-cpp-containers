@@ -1,9 +1,9 @@
-#include "deque"
+#include "deque_link.hpp"
 
 signed main()
 {
     using std::cout;
-    acc::deque<int> dq;
+    acc::Deque<int> dq;
     dq.emplace_back(1);
     dq.emplace_back(2);
     dq.push_back(3);

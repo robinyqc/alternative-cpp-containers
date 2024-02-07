@@ -1,10 +1,10 @@
 #define USE_EXTRA_ACC_DEQUE_OPT
-#include "deque"
+#include "deque_link.hpp"
 
 signed main()
 {
     using std::cout;
-    acc::deque<int> a({0, 1, 2, 3, 4, 5});
+    acc::Deque<int> a({0, 1, 2, 3, 4, 5});
     a.insert(a.cbegin() + 3, 6);
     a.insert(a.begin() + 1, 7);
     a.emplace(a.begin() + 6, 8);

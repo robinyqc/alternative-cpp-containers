@@ -22,16 +22,18 @@
 #include <algorithm>
 #include <type_traits>
 
-#ifndef _AMORTIZED_DEQUE
-#define _AMORTIZED_DEQUE
+#ifndef _ACC_DEQUE
+#define _ACC_DEQUE
 
 namespace acc
 {
 
+#ifndef _CPPVERSION
 #ifdef __cplusplus
 #define _CPPVERSION __cplusplus
 #else
 #define _CPPVERSION 201199L
+#endif
 #endif
 
 #ifndef USE_EXTRA_ACC_DEQUE_OPT
@@ -42,23 +44,14 @@ namespace acc
 
 #if _CPPVERSION >= 201100L
 
-template<typename T, typename Alloc = std::allocator<T>
-#ifdef USE_EXTRA_ACC_DEQUE_OPT
-        ,typename Container = std::vector<T, Alloc>
-#endif
->
-class AmortizedDeque
+template<typename T, typename Container = std::vector<T>>
+class Deque
 {
 
 private:
 
-    typedef AmortizedDeque<T> Self;
-
-#ifdef USE_EXTRA_ACC_DEQUE_OPT
+    typedef Deque<T> Self;
     typedef Container Vec;
-#else
-    typedef std::vector<T, Alloc> Vec;
-#endif
 
 public:
 
@@ -132,7 +125,7 @@ public:
     };
 
     typedef T                                       value_type;
-    typedef Alloc                                   allocator_type;
+    typedef typename Vec::allocator_type            allocator_type;
     typedef typename Vec::size_type                 size_type;
     typedef typename Vec::difference_type           difference_type;
     typedef typename Vec::reference                 reference;
@@ -145,38 +138,38 @@ public:
     typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
 
 
-    explicit AmortizedDeque(const allocator_type& alloc): pre(alloc), suf(alloc) { }
-    AmortizedDeque(): AmortizedDeque(allocator_type()) { }
-    AmortizedDeque(size_type count, const value_type& value, 
+    explicit Deque(const allocator_type& alloc): pre(alloc), suf(alloc) { }
+    Deque(): Deque(allocator_type()) { }
+    Deque(size_type count, const value_type& value, 
         const allocator_type& alloc = allocator_type()): pre(alloc), suf(count, value, alloc) { }
 
-    explicit AmortizedDeque(size_type count, const allocator_type& alloc = allocator_type())
+    explicit Deque(size_type count, const allocator_type& alloc = allocator_type())
         : pre(alloc), suf(count, alloc) { }
 
     template<typename InputIt> 
-    AmortizedDeque(InputIt first, InputIt last, const allocator_type& alloc = allocator_type())
+    Deque(InputIt first, InputIt last, const allocator_type& alloc = allocator_type())
         : pre(alloc), suf(first, last, alloc) { }
 
-    AmortizedDeque(const Self& other, const allocator_type& alloc = allocator_type())
+    Deque(const Self& other, const allocator_type& alloc = allocator_type())
         : pre(other.pre, alloc), suf(other.suf, alloc) { }
-    AmortizedDeque(Self&& other): AmortizedDeque() 
+    Deque(Self&& other): Deque() 
     {
         pre.swap(other.pre);
         suf.swap(other.suf);
     }
-    AmortizedDeque(std::initializer_list<value_type> init, const allocator_type& alloc = allocator_type())
+    Deque(std::initializer_list<value_type> init, const allocator_type& alloc = allocator_type())
         : pre(alloc), suf(init, alloc) { }
 
-    AmortizedDeque operator=(const Self& other)
+    Deque operator=(const Self& other)
     {
         pre = other.pre, suf = other.suf;
     }
-    AmortizedDeque operator=(Self&& other)
+    Deque operator=(Self&& other)
     {
         pre.swap(other.pre);
         suf.swap(other.suf);
     }
-    AmortizedDeque operator=(std::initializer_list<value_type> ilist)
+    Deque operator=(std::initializer_list<value_type> ilist)
     {
         pre.clear();
         suf.assign(ilist);
@@ -607,17 +600,13 @@ private:
 
 };
 
-#ifdef USE_EXTRA_ACC_DEQUE_OPT
-
-#define __TEMPL_DECLARE template<typename T, typename Alloc, typename Container>
-#define __TEMPL_DQ AmortizedDeque<T, Alloc, Container>
-
-#else
-
-#define __TEMPL_DECLARE template<typename T, typename Alloc>
-#define __TEMPL_DQ AmortizedDeque<T, Alloc>
-
+#ifndef __TEMPL_DECLARE
+#define __TEMPL_DECLARE template<typename T, typename Container>
 #endif
+
+#ifndef __TEMPL_DQ
+#define __TEMPL_DQ Deque<T, Container>
+#endif 
 
 __TEMPL_DECLARE void swap(__TEMPL_DQ& lhs, __TEMPL_DQ& rhs) 
 {
@@ -719,7 +708,7 @@ __TEMPL_DECLARE __TEMPL_DQ operator+(const __TEMPL_DQ& x, const __TEMPL_DQ& y)
 
 #else
 
-static_assert(false, "Requires C++11 or later for acc::deque.");
+static_assert(false, "Require C++11 or later for acc::deque.");
 
 #endif
 

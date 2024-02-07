@@ -6,9 +6,10 @@ including `deque`, `vector`, `bitset`, `queue`.
 The purpose of the project is to perform better from the mainstream
 implementation in some conditions, and try not to do too bad under the others.
 
-So that although most interfaces of ISO C++14 and some of ISO C++17 is 
-achieved, not all the requirements are fit, such as the iterator invalidation.
-See the documents in directory `./docs` for more details.
+So that although most interfaces of ISO C++14 and some of ISO C++17 are 
+provided, not all the requirements are fit, such as the iterator invalidation.
+That is, they can be used as same as the standard library but perform a bit
+different. See the documents in directory `./docs` for more details.
 
 _Now we only implement `deque`. The others will come soon._
 

@@ -1,15 +1,13 @@
 #include <iostream>
 #define USE_EXTRA_ACC_DEQUE_OPT
-#include "deque"
-#include <deque>
+#include "deque_link.hpp"
 
 
 signed main()
 {
     using std::cout;
     
-    // acc::AmotrizedDeque == acc::deque
-    using AMDQ = acc::AmortizedDeque<double>; 
+    using AMDQ = acc::Deque<double>; 
 
     AMDQ empty;
 
