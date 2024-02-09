@@ -21,20 +21,13 @@
 #include <utility>
 #include <algorithm>
 #include <type_traits>
+#include "AccDefs.h"
 
 #ifndef _ACC_DEQUE
 #define _ACC_DEQUE
 
 namespace acc
 {
-
-#ifndef _CPPVERSION
-#ifdef __cplusplus
-#define _CPPVERSION __cplusplus
-#else
-#define _CPPVERSION 201199L
-#endif
-#endif
 
 #ifndef USE_EXTRA_ACC_DEQUE_OPT
 #ifdef USE_EXTRA_ACC_OPT
@@ -129,7 +122,7 @@ public:
     typedef typename Vec::size_type                 size_type;
     typedef typename Vec::difference_type           difference_type;
     typedef typename Vec::reference                 reference;
-    typedef const typename Vec::const_reference     const_reference;
+    typedef typename Vec::const_reference           const_reference;
     typedef typename Vec::iterator                  pointer;
     typedef typename Vec::const_iterator            const_pointer;
     typedef _Iterator<T&, pointer>                  iterator;

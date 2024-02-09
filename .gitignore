@@ -6,6 +6,7 @@
 !*.hpp
 !*.md
 !*.png
+!*.h
 
 !.gitignore
 !.gitattributes
