@@ -1,7 +1,13 @@
+#ifndef _ACC_VECTOR
+#define _ACC_VECTOR
+
 #include <vector>
 #include <cstddef>
-#include "AccDefs.h"
-#include <bit>
+
+#include "AccBit.hpp"
+
+namespace acc
+{
 
 template<typename T, typename Alloc = std::allocator<T>>
 class Vector
@@ -31,45 +37,97 @@ public:
 
 public:
 
+    constexpr size_type size() const noexcept
+    {
+        return vec_impl.size;
+    }
+
     void push_back(const value_type& x)
     {
-        if ((size & -size) == size) { // 0 or 1 << x
+        if ((size() & -size()) == size()) { // 0 or 1 << x
             expand();
         }
-        *at_unsafe(size++) = x;
+        *at_unsafe(size()++) = x;
+    }
+
+    allocator_type get_allocator()
+    {
+        return allocator_type(vec_impl);
     }
 
 private:
 
-    pointer* head;
 
     typedef typename AllocVal::rebind_traits<pointer> AllocPtr;
 
-    size_type size;
+    struct _VecData
+    {
+        pointer* head;
+        size_type size;
+    };
 
-    allocator_type alloc;
+    struct _VecImpl : allocator_type, _VecData
+    {
+        constexpr _VecImpl() noexcept(
+            is_nothrow_default_constructible<allocator_type>::value)
+        : allocator_type()
+        { }
+
+        constexpr
+        _VecImpl(allocator_type const& __a) noexcept
+            : allocator_type(__a)
+        { }
+
+        constexpr
+        _VecImpl(_VecImpl&& __x) noexcept
+            : allocator_type(std::move(__x)), _VecData(std::move(__x))
+        { }
+
+        constexpr
+        _VecImpl(allocator_type&& __a) noexcept
+            : allocator_type(std::move(__a))
+        { }
+
+        constexpr
+        _VecImpl(allocator_type&& __a, _VecImpl&& __rv) noexcept
+            : allocator_type(std::move(__a)), _VecData(std::move(__rv))
+        { }
+    };
+    
+    _VecImpl vec_impl;
+
+    constexpr pointer* head() const noexcept
+    {
+        return head();
+    }
 
     void expand()
     {
-        size_type head_size = std::bit_width(size);
+        size_type head_size = std::bit_width(size());
+        allocator_type alloc = get_allocator();
         pointer* temp = AllocPtr::allocate(alloc, head_size + 1ull);
         for (size_type i = 0; i < head_size; ++i) {
-            AllocPtr::construct(alloc, temp + i, *(head + i));
-            AllocPtr::destroy(alloc, head + i);
+            AllocPtr::construct(alloc, temp + i, *(size() + i));
+            AllocPtr::destroy(alloc, head() + i);
         }
-        if (size == 0ull) {
+        if (size() == 0ull) {
             AllocPtr::construct(alloc, temp + head_size, AllocVal::allocate(alloc, 1ull));
         }
         else {
-            AllocPtr::construct(alloc, temp + head_size, AllocVal::allocate(alloc, size));
-            AllocPtr::deallocate(alloc, head, head_size);
+            AllocPtr::construct(alloc, temp + head_size, AllocVal::allocate(alloc, size()));
+            AllocPtr::deallocate(alloc, head(), head_size);
         }
-        head = temp;
+        head() = temp;
     }
 
     pointer at_unsafe(size_type pos)
     {
-        return head[std::bit_width(pos)] + (pos - std::bit_floor(pos));
+        return head()[std::bit_width(pos)] + (pos - std::bit_floor(pos));
     }
 
 };
+
+}
+
+
+#endif

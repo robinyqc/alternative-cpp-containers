@@ -21,7 +21,6 @@
 #include <utility>
 #include <algorithm>
 #include <type_traits>
-#include "AccDefs.h"
 
 #ifndef _ACC_DEQUE
 #define _ACC_DEQUE
@@ -35,7 +34,7 @@ namespace acc
 #endif
 #endif
 
-#if _CPPVERSION >= 201100L
+#if __cplusplus >= 201103L
 
 template<typename T, typename Container = std::vector<T>>
 class Deque
@@ -457,7 +456,7 @@ public:
         suf.push_back(std::move(val));
     }
 
-#if _CPPVERSION >= 201700L
+#if __cplusplus >= 201703L
     template<class... Args>
     reference emplace_back(Args&&... args) 
     {
@@ -488,7 +487,7 @@ public:
         pre.push_back(std::move(val));
     }
 
-#if _CPPVERSION >= 201700L
+#if __cplusplus >= 201703L
     template<class... Args>
     reference emplace_front(Args&&... args) 
     {
