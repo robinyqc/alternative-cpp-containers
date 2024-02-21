@@ -21,6 +21,9 @@
 #include <utility>
 #include <algorithm>
 #include <type_traits>
+#include <stdexcept>
+
+#include "IndexingIterator.hpp"
 
 #ifndef _ACC_DEQUE
 #define _ACC_DEQUE
@@ -47,87 +50,20 @@ private:
 
 public:
 
-    template<typename Ref, typename Ptr>
-    class _Iterator
-    {
-    private:
+    DERIVE_ACC_INDEXING_ITERATOR(_Iterator, at_unsafe)
 
-        typedef _Iterator<Ref, Ptr> Iter;
-
-    public:
-        typedef T                                           value_type;
-        typedef size_t                                      size_type;
-        typedef ptrdiff_t                                   difference_type;
-        typedef Ref                                         reference;
-        typedef Ptr                                         pointer;
-        typedef std::random_access_iterator_tag             iterator_category;
-    
-    private:
-
-        pointer get() const { return s->get_unsafe(cur); }
-
-    public:
-
-        difference_type cur;
-        Self* s;
-
-        _Iterator(): cur(), s(nullptr) { }
-        _Iterator(difference_type _c, Self* _s): cur(_c), s(_s) { }
-        _Iterator(difference_type _c, const Self* _s): cur(_c), s(const_cast<Self*>(_s)) { }
-        template<typename _Iter,
-            typename = std::enable_if<
-                std::is_same<Iter, _Iterator<const T&, typename Self::const_pointer>>::value 
-                &&std::is_same<_Iter, _Iterator<T&, typename Self::pointer>>::value>>
-        _Iterator(const _Iter& __x): cur(__x.cur), s(__x.s) { }
-        _Iterator(const _Iterator& __x): cur(__x.cur), s(__x.s) { }
-        _Iterator& operator=(const _Iterator& t) = default;
-
-        reference operator*() const { return *get(); }
-        pointer operator->() const { return get(); }
-        reference operator[](difference_type n) const { return *((*this) + n); }
-
-        Iter& operator++() { ++cur; return (*this); }
-        Iter operator++(int) 
-        {
-            Iter copy = *this;
-            ++cur;
-            return copy;
-        }
-        Iter& operator+=(difference_type n) { cur += n; return (*this); }
-        Iter operator+(difference_type n) const { return Iter(cur + n, s); }
-        friend Iter operator+(difference_type n, Iter th) { return Iter(th.cur + n, th.s); }
-
-        Iter& operator--() { --cur; return (*this); }
-        Iter operator--(int) 
-        {
-            Iter copy = (*this);
-            --cur;
-            return copy;
-        }
-        Iter operator-=(difference_type n) { cur -= n; return (*this); }
-        Iter operator-(difference_type n) const { return Iter(cur - n, s); }
-        difference_type operator-(const Iter& t) const { return cur - t.cur; }
-
-        bool operator==(const Iter& t) const { return s == t.s && cur == t.cur; }
-        bool operator!=(const Iter& t) const { return s != t.s || cur != t.cur; }
-        bool operator<(const Iter& t) const { return (t - (*this)) > 0; }
-        bool operator>(const Iter& t) const { return t < (*this); }
-        bool operator>=(const Iter& t) const { return !((*this) < t); }
-        bool operator<=(const Iter& t) const { return !((*this) > t); }
-    };
-
-    typedef T                                       value_type;
-    typedef typename Vec::allocator_type            allocator_type;
-    typedef typename Vec::size_type                 size_type;
-    typedef typename Vec::difference_type           difference_type;
-    typedef typename Vec::reference                 reference;
-    typedef typename Vec::const_reference           const_reference;
-    typedef typename Vec::iterator                  pointer;
-    typedef typename Vec::const_iterator            const_pointer;
-    typedef _Iterator<T&, pointer>                  iterator;
-    typedef _Iterator<const T&, const_pointer>      const_iterator;
-    typedef std::reverse_iterator<iterator>         reverse_iterator;
-    typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
+    typedef T                                           value_type;
+    typedef typename Vec::allocator_type                allocator_type;
+    typedef typename Vec::size_type                     size_type;
+    typedef typename Vec::difference_type               difference_type;
+    typedef typename Vec::reference                     reference;
+    typedef typename Vec::const_reference               const_reference;
+    typedef typename Vec::iterator                      pointer;
+    typedef typename Vec::const_iterator                const_pointer;
+    typedef _Iterator<T&, pointer>                      iterator;
+    typedef _Iterator<const T&, const_pointer>          const_iterator;
+    typedef std::reverse_iterator<iterator>             reverse_iterator;
+    typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
 
     explicit Deque(const allocator_type& alloc): pre(alloc), suf(alloc) { }
@@ -191,26 +127,26 @@ public:
 
     reference operator[](size_type pos) 
     { 
-        return *get_unsafe(static_cast<difference_type>(pos) 
-                          - static_cast<difference_type>(pre.size())); 
+        return *at_unsafe(static_cast<difference_type>(pos) 
+                         - static_cast<difference_type>(pre.size())); 
     }
     const_reference operator[](size_type pos) const 
     { 
-        return *get_const_unsafe(static_cast<difference_type>(pos) 
-                                - static_cast<difference_type>(pre.size())); 
+        return *at_const_unsafe(static_cast<difference_type>(pos) 
+                               - static_cast<difference_type>(pre.size())); 
     }
 
     reference at(size_type pos)
     {
         range_check(pos);
-        return *get_unsafe(static_cast<difference_type>(pos) 
-                          - static_cast<difference_type>(pre.size()));
+        return *at_unsafe(static_cast<difference_type>(pos) 
+                         - static_cast<difference_type>(pre.size()));
     }
     const_reference at(size_type pos) const
     {
         range_check(pos);
-        return *get_const_unsafe(static_cast<difference_type>(pos) 
-                                - static_cast<difference_type>(pre.size()));
+        return *at_const_unsafe(static_cast<difference_type>(pos) 
+                               - static_cast<difference_type>(pre.size()));
     }
 
     size_type size() const { return pre.size() + suf.size(); }
@@ -557,12 +493,12 @@ private:
     Vec pre;
     Vec suf;
 
-    pointer get_unsafe(difference_type pos)
+    pointer at_unsafe(difference_type pos)
     {
         if (pos < 0) return (pre.begin() - pos - 1);
         return (suf.begin() + pos);
     }
-    const_pointer get_const_unsafe(difference_type pos) const
+    const_pointer at_const_unsafe(difference_type pos) const
     {
         if (pos < 0) return (pre.cbegin() - pos - 1);
         return (suf.cbegin() + pos);
@@ -572,7 +508,10 @@ private:
     {
         if (pos >= size())
         {
-            // throw std::out_of_range;
+            throw std::out_of_range("Deque::range_check: pos "
+				       "(which is " + std::to_string(pos) + 
+                       ") >= this->size() (which is " + 
+                       std::to_string(this->size()) + ")");
         }
     }
 

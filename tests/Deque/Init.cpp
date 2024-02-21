@@ -1,7 +1,7 @@
 #include <iostream>
 #define USE_EXTRA_ACC_DEQUE_OPT
-#include "deque_link.hpp"
-
+#include "DequeLink.hpp"
+#include <memory>
 
 signed main()
 {

@@ -3,8 +3,10 @@
 
 #include <vector>
 #include <cstddef>
+#include <type_traits>
 
 #include "AccBit.hpp"
+#include "IndexingIterator.hpp"
 
 namespace acc
 {
@@ -19,12 +21,14 @@ private:
 
 public:
 
-    typedef T                                       value_type;
-    typedef Alloc                                   allocator_type;
-    typedef std::size_t                             size_type;
-    typedef std::ptrdiff_t                          difference_type;
-    typedef T&                                      reference;
-    typedef const T&                                const_reference;
+    DERIVE_ACC_INDEXING_ITERATOR(_Iterator, at_unsafe)
+
+    typedef T                                           value_type;
+    typedef Alloc                                       allocator_type;
+    typedef std::size_t                                 size_type;
+    typedef std::ptrdiff_t                              difference_type;
+    typedef T&                                          reference;
+    typedef const T&                                    const_reference;
 
 private:
 
@@ -34,6 +38,10 @@ public:
 
     typedef typename AllocVal::pointer              pointer;
     typedef typename AllocVal::const_pointer        const_pointer;
+    typedef _Iterator<T&, pointer>                      iterator;
+    typedef _Iterator<const T&, const_pointer>          const_iterator;
+    typedef std::reverse_iterator<iterator>             reverse_iterator;
+    typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
 public:
 
@@ -64,12 +72,22 @@ private:
     {
         pointer* head;
         size_type size;
+
+        constexpr _VecData() noexcept : head(), size() { }
+
+        constexpr
+        _VecData(_VecData&& __x) noexcept
+            : head(__x.head), size(__x.size)
+        { 
+            __x.head = (__x.size = pointer()); 
+        }
+
     };
 
     struct _VecImpl : allocator_type, _VecData
     {
         constexpr _VecImpl() noexcept(
-            is_nothrow_default_constructible<allocator_type>::value)
+            std::is_nothrow_default_constructible<allocator_type>::value)
         : allocator_type()
         { }
 
@@ -98,12 +116,12 @@ private:
 
     constexpr pointer* head() const noexcept
     {
-        return head();
+        return vec_impl.head;
     }
 
     void expand()
     {
-        size_type head_size = std::bit_width(size());
+        size_type head_size = acc::bit_width(size());
         allocator_type alloc = get_allocator();
         pointer* temp = AllocPtr::allocate(alloc, head_size + 1ull);
         for (size_type i = 0; i < head_size; ++i) {
@@ -122,7 +140,7 @@ private:
 
     pointer at_unsafe(size_type pos)
     {
-        return head()[std::bit_width(pos)] + (pos - std::bit_floor(pos));
+        return head()[acc::bit_width(pos)] + (pos - acc::bit_floor(pos));
     }
 
 };
