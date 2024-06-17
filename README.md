@@ -1,3 +1,16 @@
+# Archived
+
+To study cpp standard library and implement something I desired to make, I published this repo.
+But as time pass by, I found it difficult to achieve it by myself. So it's time to give up.
+
+I remains a thought that, maybe one day I'll pick it up? 
+Then I leave this here, and also mark my effort before.
+
+**Actually there are some same (or similar) containers in the famous lib - boost. It implements
+all my thought. So for usage, please try [boost](https://www.boost.org/).**
+
+***
+
 # Alternative CPP Containers (ACC)
 
 Some implementations of C++ standard containers,
